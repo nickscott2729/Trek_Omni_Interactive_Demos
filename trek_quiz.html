@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find Your Trek — Bike Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --red: #E8002A;
+  --red-dark: #B0001F;
+  --black: #080808;
+  --dark: #111;
+  --mid: #1C1C1C;
+  --border: #252525;
+  --text: #F0F0F0;
+  --muted: #666;
+  --muted2: #999;
+  --green: #22C55E;
+}
+
+html, body {
+  height: 100%;
+  background: var(--black);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── NOISE TEXTURE ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* ── HEADER ── */
+header {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 40px;
+  height: 56px;
+  background: rgba(8,8,8,0.92);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+}
+.logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  letter-spacing: 5px;
+  color: var(--text);
+}
+.header-sep { width: 1px; height: 20px; background: var(--border); }
+.header-tag {
+  font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted2);
+}
+.progress-wrap {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 12px;
+}
+.progress-label {
+  font-size: 11px; color: var(--muted); letter-spacing: 1px;
+}
+.progress-track {
+  width: 120px; height: 2px;
+  background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--red);
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── MAIN SHELL ── */
+.shell {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px 60px;
+  position: relative; z-index: 1;
+}
+
+/* ── SLIDE CONTAINER ── */
+.slide-container {
+  width: 100%;
+  max-width: 860px;
+  position: relative;
+}
+
+.slide {
+  display: none;
+  animation: slideIn 0.45s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+.slide.active { display: block; }
+.slide.exit {
+  display: block;
+  animation: slideOut 0.3s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-20px); }
+}
+
+/* ── QUESTION HEADER ── */
+.q-eyebrow {
+  font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--red);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.q-eyebrow::before {
+  content: '';
+  display: block; width: 24px; height: 2px;
+  background: var(--red);
+}
+.q-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(36px, 6vw, 58px);
+  letter-spacing: 1px;
+  line-height: 1.05;
+  margin-bottom: 8px;
+}
+.q-sub {
+  font-size: 15px; color: var(--muted2);
+  font-weight: 300; margin-bottom: 40px;
+  max-width: 560px;
+}
+
+/* ── OPTION CARDS ── */
+.options {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.options.cols-2 { grid-template-columns: 1fr 1fr; }
+.options.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.options.cols-1 { grid-template-columns: 1fr; max-width: 560px; }
+
+.opt {
+  background: var(--mid);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px 22px;
+  cursor: pointer;
+  display: flex; align-items: flex-start; gap: 16px;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+  position: relative; overflow: hidden;
+  user-select: none;
+}
+.opt::after {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--red);
+  transform: scaleY(0); transform-origin: bottom;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+.opt:hover {
+  border-color: #3a3a3a;
+  transform: translateY(-2px);
+  background: #222;
+}
+.opt.selected {
+  border-color: var(--red);
+  background: #180008;
+}
+.opt.selected::after { transform: scaleY(1); }
+
+
+
+/* ── BUDGET SLIDER ── */
+.slider-wrap { margin-bottom: 32px; max-width: 560px; }
+.slider-display {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px; letter-spacing: 2px;
+  color: var(--red); margin-bottom: 4px;
+}
+.slider-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+input[type=range] {
+  -webkit-appearance: none; width: 100%; height: 3px;
+  background: var(--border); border-radius: 3px; outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--red); cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(232,0,42,0.2);
+  transition: box-shadow 0.2s;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 6px rgba(232,0,42,0.2);
+}
+.slider-labels {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--muted); margin-top: 8px;
+}
+
+/* ── NAV BUTTONS ── */
+.nav-row {
+  display: flex; align-items: center; gap: 14px;
+}
+.btn-next {
+  background: var(--red); color: white;
+  border: none; border-radius: 4px;
+  padding: 14px 36px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px; letter-spacing: 2px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  display: flex; align-items: center; gap: 10px;
+}
+.btn-next:hover { background: var(--red-dark); }
+.btn-next:active { transform: scale(0.97); }
+.btn-next svg { transition: transform 0.2s; }
+.btn-next:hover svg { transform: translateX(4px); }
+.btn-next:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-back {
+  background: none; border: 1px solid var(--border);
+  color: var(--muted2); border-radius: 4px;
+  padding: 14px 22px;
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px; letter-spacing: 1px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-back:hover { border-color: #444; color: var(--text); }
+
+.skip-link {
+  margin-left: auto;
+  font-size: 12px; color: var(--muted);
+  cursor: pointer; letter-spacing: 0.5px;
+  transition: color 0.2s;
+  background: none; border: none;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.skip-link:hover { color: var(--muted2); }
+
+/* ── RESULT SLIDE ── */
+.result-eyebrow {
+  font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--green);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.result-eyebrow::before { content:''; display:block; width:24px; height:2px; background: var(--green); }
+
+.result-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(32px, 5vw, 50px);
+  letter-spacing: 1px; line-height: 1.05;
+  margin-bottom: 6px;
+}
+.result-sub { font-size: 15px; color: var(--muted2); margin-bottom: 36px; }
+
+.result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 32px; }
+
+.result-card {
+  background: var(--mid);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.25s, transform 0.25s;
+  position: relative;
+}
+.result-card:hover { border-color: var(--red); transform: translateY(-4px); }
+.result-card.top-pick { border-color: var(--red); }
+.top-badge {
+  position: absolute; top: 10px; left: 10px; z-index: 2;
+  background: var(--red); color: white;
+  font-size: 9px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 2px;
+}
+.result-img {
+  width: 100%; aspect-ratio: 4/3; object-fit: cover;
+  background: #0f0f0f;
+  filter: brightness(0.9);
+  transition: filter 0.3s;
+}
+.result-card:hover .result-img { filter: brightness(1); }
+.result-body { padding: 14px 16px; }
+.result-cat {
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--red); margin-bottom: 4px;
+}
+.result-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.result-desc { font-size: 11px; color: var(--muted2); line-height: 1.4; margin-bottom: 10px; }
+.result-price { font-size: 14px; font-weight: 700; color: var(--text); }
+.result-cta {
+  display: inline-block; margin-top: 8px;
+  background: var(--red); color: white;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px; letter-spacing: 1.5px;
+  padding: 8px 16px; border-radius: 3px;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.result-cta:hover { background: var(--red-dark); }
+
+.restart-btn {
+  background: none; border: 1px solid var(--border);
+  color: var(--muted2); border-radius: 4px;
+  padding: 13px 24px;
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px; cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.restart-btn:hover { border-color: #444; color: var(--text); }
+
+/* ── INTRO SLIDE ── */
+.intro-wrap {
+  text-align: left;
+  max-width: 700px;
+}
+.intro-kicker {
+  font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--red); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.intro-kicker::before { content:''; display:block; width:30px; height:2px; background:var(--red); }
+.intro-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(52px, 9vw, 88px);
+  line-height: 0.95; letter-spacing: 1px;
+  margin-bottom: 24px;
+}
+.intro-title span { color: var(--red); }
+.intro-body {
+  font-size: 16px; color: var(--muted2); font-weight: 300;
+  line-height: 1.65; margin-bottom: 36px; max-width: 520px;
+}
+.intro-meta {
+  display: flex; gap: 28px; margin-bottom: 40px;
+}
+.intro-stat { }
+.intro-stat-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px; color: var(--red); letter-spacing: 1px;
+}
+.intro-stat-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+
+.start-btn {
+  background: var(--red); color: white;
+  border: none; border-radius: 4px;
+  padding: 16px 44px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px; letter-spacing: 2px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  display: inline-flex; align-items: center; gap: 12px;
+}
+.start-btn:hover { background: var(--red-dark); transform: translateY(-2px); }
+
+/* ── RED LINE ACCENT ── */
+.red-line {
+  width: 40px; height: 3px; background: var(--red);
+  margin-bottom: 32px;
+}
+
+/* ── BACK ARROW ── */
+.back-arrow { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+
+/* pop anim for cards */
+@keyframes optPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.025); }
+  100% { transform: scale(1); }
+}
+.opt.pop, .opt-img-card.pop { animation: optPop 0.3s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">TREK</span>
+  <div class="header-sep"></div>
+  <span class="header-tag">Bike Finder</span>
+  <div class="progress-wrap">
+    <span class="progress-label" id="progressLabel">0 of 6</span>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+<div class="slide-container">
+
+  <!-- ══ SLIDE 0: INTRO ══ -->
+  <div class="slide active" id="slide-0">
+    <div class="intro-wrap">
+      <div class="intro-kicker">Trek Bike Finder · 6 Questions</div>
+      <div class="intro-title">Find Your<br><span>Perfect</span><br>Trek.</div>
+      <div class="intro-body">
+        Tell us how you ride — or how you want to. We'll ask a few simple questions 
+        nobody else asks first, then match you to the exact bike built for your life.
+      </div>
+      <div class="intro-meta">
+        <div class="intro-stat">
+          <div class="intro-stat-num">6</div>
+          <div class="intro-stat-label">Questions</div>
+        </div>
+        <div class="intro-stat">
+          <div class="intro-stat-num">2 min</div>
+          <div class="intro-stat-label">Your time</div>
+        </div>
+        <div class="intro-stat">
+          <div class="intro-stat-num">1</div>
+          <div class="intro-stat-label">Perfect bike</div>
+        </div>
+      </div>
+      <button class="start-btn" onclick="startQuiz()">
+        Let's Find It
+        
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 1: RIDER TYPE (Novel — not on Trek's site) ══ -->
+  <div class="slide" id="slide-1">
+    <div class="q-eyebrow">Question 1 of 6 · The Big Picture</div>
+    <div class="q-title">Which one are you?</div>
+    <div class="q-sub">Don't overthink it. Go with your gut — this is about who you are, not just where you ride.</div>
+    <div class="options cols-2">
+
+      <div class="opt" data-q="1" data-val="adventurer" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">The Adventurer</div>
+          <div class="opt-desc">Trails, gravel, backcountry — bring it.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="1" data-val="commuter" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">The Commuter</div>
+          <div class="opt-desc">Fast, reliable, point A to B.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="1" data-val="fitness" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">The Fitness Rider</div>
+          <div class="opt-desc">Speed, distance, performance.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="1" data-val="casual" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">The Weekend Rider</div>
+          <div class="opt-desc">Fun, easy, no complications.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <button class="btn-next" id="next-1" onclick="nextSlide()" disabled>
+        Continue 
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 2: WHERE (Novel framing — not just "trail type") ══ -->
+  <div class="slide" id="slide-2">
+    <div class="q-eyebrow">Question 2 of 6 · Your World</div>
+    <div class="q-title">Where does your ride live?</div>
+    <div class="q-sub">Pick the one that matches where you actually spend your time — not where you wish you did.</div>
+    <div class="options cols-1">
+
+      <div class="opt" data-q="2" data-val="trails" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Dirt &amp; Trails</div>
+          <div class="opt-desc">Singletrack, fire roads, off-road</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="2" data-val="road" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Pavement &amp; Roads</div>
+          <div class="opt-desc">Streets, bike lanes, open roads</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="2" data-val="mixed" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Mixed &amp; Gravel</div>
+          <div class="opt-desc">Paths, gravel, a bit of everything</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <button class="btn-next" id="next-2" onclick="nextSlide()" disabled>
+        Continue 
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 3: INTENSITY (Novel — Trek doesn't ask this) ══ -->
+  <div class="slide" id="slide-3">
+    <div class="q-eyebrow">Question 3 of 6 · Your Speed</div>
+    <div class="q-title">How do you want to feel at the end of a ride?</div>
+    <div class="q-sub">Helps us understand what kind of ride experience you're looking for.</div>
+    <div class="options cols-1">
+
+      <div class="opt" data-q="3" data-val="easy" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Refreshed</div>
+          <div class="opt-desc">Comfort over everything. Riding should feel good.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="3" data-val="moderate" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Accomplished</div>
+          <div class="opt-desc">A solid workout — but still fun.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="3" data-val="hard" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Wrecked</div>
+          <div class="opt-desc">That's the whole point. Bring the suffering.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <button class="btn-next" id="next-3" onclick="nextSlide()" disabled>
+        Continue 
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 4: E-BIKE (Novel placement — Trek asks this per-category) ══ -->
+  <div class="slide" id="slide-4">
+    <div class="q-eyebrow">Question 4 of 6 · Power</div>
+    <div class="q-title">Electric assist — yes or no?</div>
+    <div class="q-sub">E-bikes aren't cheating. They're a different kind of freedom. No judgment either way.</div>
+    <div class="options cols-1">
+
+      <div class="opt" data-q="4" data-val="no-ebike" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">No thanks</div>
+          <div class="opt-desc">Pure pedal power only.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="4" data-val="yes-ebike" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Yes — give me the assist</div>
+          <div class="opt-desc">Longer rides, bigger hills, easier commutes.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="4" data-val="maybe-ebike" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Open to it</div>
+          <div class="opt-desc">Show me both and I'll decide.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <button class="btn-next" id="next-4" onclick="nextSlide()" disabled>
+        Continue 
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 5: EXPERIENCE ══ -->
+  <div class="slide" id="slide-5">
+    <div class="q-eyebrow">Question 5 of 6 · Your History</div>
+    <div class="q-title">When did you last ride regularly?</div>
+    <div class="q-sub">This helps us match you to a bike that feels right from day one — not one you have to grow into.</div>
+    <div class="options cols-1">
+
+      <div class="opt" data-q="5" data-val="new" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">New or returning rider</div>
+          <div class="opt-desc">Comfortable and forgiving — I want to build confidence.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="5" data-val="intermediate" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Occasional rider</div>
+          <div class="opt-desc">I know what I'm doing — I want more capability.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+      <div class="opt" data-q="5" data-val="experienced" onclick="pick(this)">
+        <div class="opt-text">
+          <div class="opt-name">Regular rider</div>
+          <div class="opt-desc">Performance specs matter — don't hold back.</div>
+        </div>
+        <div class="opt-check"></div>
+      </div>
+
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <button class="btn-next" id="next-5" onclick="nextSlide()" disabled>
+        Continue 
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 6: BUDGET ══ -->
+  <div class="slide" id="slide-6">
+    <div class="q-eyebrow">Question 6 of 6 · Investment</div>
+    <div class="q-title">What's your budget?</div>
+    <div class="q-sub">We'll show you the best Trek in your range — not the most expensive one we carry.</div>
+    <div class="slider-wrap">
+      <div class="slider-display" id="budgetDisplay">$1,000</div>
+      <div class="slider-sub">Drag to adjust</div>
+      <input type="range" id="budgetSlider" min="500" max="12000" step="100" value="1000" oninput="updateBudget(this.value)">
+      <div class="slider-labels"><span>$500</span><span>$3,000</span><span>$6,000</span><span>$12,000+</span></div>
+    </div>
+    <div class="nav-row">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <button class="btn-next" onclick="showResults()">
+        Find My Bike 
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 7: RESULTS ══ -->
+  <div class="slide" id="slide-7">
+    <div class="result-eyebrow">Your Perfect Match</div>
+    <div class="result-title" id="resultTitle">Here's Your Trek.</div>
+    <div class="result-sub" id="resultSub">Based on your answers, we found three bikes built for exactly how you want to ride.</div>
+
+    <div class="result-grid" id="resultGrid">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="nav-row">
+      <button class="restart-btn" onclick="restart()">← Start Over</button>
+    </div>
+  </div>
+
+</div><!-- /slide-container -->
+</div><!-- /shell -->
+
+<script>
+// ── STATE ──
+let currentSlide = 0;
+const totalQ = 6;
+const answers = {};
+let budget = 1000;
+
+// ── NAVIGATION ──
+function startQuiz() {
+  goToSlide(1);
+}
+
+function goToSlide(n) {
+  const current = document.getElementById('slide-' + currentSlide);
+  current.classList.add('exit');
+  setTimeout(() => {
+    current.classList.remove('active', 'exit');
+    currentSlide = n;
+    const next = document.getElementById('slide-' + n);
+    next.classList.add('active');
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, 280);
+}
+
+function nextSlide() {
+  if (currentSlide < 6) goToSlide(currentSlide + 1);
+}
+
+function goBack() {
+  if (currentSlide > 1) goToSlide(currentSlide - 1);
+  else goToSlide(0);
+}
+
+function updateProgress() {
+  const q = Math.max(0, currentSlide - 1);
+  const pct = (q / totalQ) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent =
+    currentSlide === 0 ? '0 of 6' :
+    currentSlide === 7 ? '6 of 6' :
+    `${q} of ${totalQ}`;
+}
+
+// ── PICKING ──
+function pick(el) {
+  const q = el.dataset.q;
+  document.querySelectorAll(`[data-q="${q}"].opt`).forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+  answers[q] = el.dataset.val;
+  const btn = document.getElementById('next-' + currentSlide);
+  if (btn) btn.disabled = false;
+}
+
+function pickImg(el) { el.dataset.q = el.dataset.q || '2';
+  const q = el.dataset.q;
+  document.querySelectorAll(`[data-q="${q}"].opt-img-card`).forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+  answers[q] = el.dataset.val;
+  const btn = document.getElementById('next-' + currentSlide);
+  if (btn) btn.disabled = false;
+}
+
+// ── BUDGET ──
+function updateBudget(val) {
+  budget = parseInt(val);
+  answers['budget'] = budget;
+  document.getElementById('budgetDisplay').textContent =
+    budget >= 12000 ? '$12,000+' : '$' + budget.toLocaleString();
+}
+
+// ── RESULT ENGINE ──
+const BIKES = [
+  // Mountain
+  { name: 'Marlin 5', cat: 'Mountain', desc: 'The perfect intro trail bike. Capable, fun, and ready for whatever the local trails throw at you.', price: 599, tags: ['adventurer','trails','easy','moderate','new','intermediate','no-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/Marlin5_23_35404_A_Portrait' },
+  { name: 'Marlin 7', cat: 'Mountain', desc: 'More trail performance with a better drivetrain. Great for riders ready to push their limits on singletrack.', price: 799, tags: ['adventurer','trails','moderate','hard','intermediate','no-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/Marlin7_22_35222_A_Portrait' },
+  { name: 'Fuel EX 5', cat: 'Mountain', desc: 'Full suspension trail versatility. Ready for technical terrain without sacrificing all-day comfort.', price: 2399, tags: ['adventurer','trails','moderate','hard','intermediate','experienced','no-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/FuelEX5_23_35630_A_Portrait' },
+  { name: 'Rail 5', cat: 'E-Mountain', desc: 'Electric full suspension trail bike. More miles, bigger climbs, more smiles per hour.', price: 3499, tags: ['adventurer','trails','easy','moderate','new','intermediate','yes-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/Rail5_23_35750_A_Portrait' },
+  // Road
+  { name: 'Domane AL 2', cat: 'Road', desc: 'Endurance geometry for long days in the saddle. Comfortable, smooth, and built for distance.', price: 1049, tags: ['fitness','road','moderate','hard','new','intermediate','no-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/DomaneAL2_23_35500_A_Portrait' },
+  { name: 'Émonda ALR 5', cat: 'Road', desc: 'Lightweight climber. Built for riders who want speed and efficiency on every type of road ride.', price: 1899, tags: ['fitness','road','hard','experienced','no-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/EmondaALR5_23_35452_A_Portrait' },
+  { name: 'Madone SL 6', cat: 'Road', desc: 'Aero race machine. When performance and speed are non-negotiable.', price: 5499, tags: ['fitness','road','hard','experienced','no-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/MadoneSL6_23_35556_A_Portrait' },
+  // Hybrid / City
+  { name: 'Dual Sport 2', cat: 'Hybrid', desc: 'The go-anywhere city bike. Handles paths, light gravel, and pavement without breaking a sweat.', price: 599, tags: ['commuter','casual','road','mixed','easy','moderate','new','intermediate','no-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/DualSport2_23_35414_A_Portrait' },
+  { name: 'FX 3 Disc', cat: 'Fitness Hybrid', desc: 'Fast and efficient. The best commuter-meets-fitness bike in the lineup.', price: 849, tags: ['commuter','fitness','casual','road','mixed','moderate','intermediate','no-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/FX3Disc_22_35260_A_Portrait' },
+  { name: 'Checkpoint ALR 5', cat: 'Gravel', desc: 'Built for all-road adventures. Gravel, pavement, packed dirt — this bike handles it all.', price: 2099, tags: ['adventurer','fitness','mixed','moderate','hard','intermediate','experienced','no-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/CheckpointALR5_23_35600_A_Portrait' },
+  // E-Bike city/hybrid
+  { name: 'Verve+ 2', cat: 'E-Hybrid', desc: 'The easiest way back on a bike. Electric assist that makes every ride feel like a tailwind.', price: 1899, tags: ['commuter','casual','road','mixed','easy','new','yes-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/VervePlus2_23_35780_A_Portrait' },
+  { name: 'Allant+ 7', cat: 'E-City', desc: 'The premium electric commuter. Smart, fast, and ready for longer rides.', price: 3499, tags: ['commuter','fitness','road','mixed','moderate','intermediate','experienced','yes-ebike','maybe-ebike'], img: 'https://media.trekbikes.com/image/upload/f_auto,fl_progressive:semi,w_600,h_400,c_pad/AllantPlus7_23_35800_A_Portrait' },
+];
+
+function scoreMatch(bike) {
+  let score = 0;
+  const vals = Object.values(answers).filter(v => v !== undefined);
+  vals.forEach(v => {
+    if (bike.tags.includes(v)) score++;
+  });
+  // budget score
+  if (budget >= 12000 || bike.price <= budget) score += 2;
+  else if (bike.price <= budget * 1.2) score += 1;
+  return score;
+}
+
+function showResults() {
+  answers['budget'] = budget;
+
+  // Score all bikes
+  const scored = BIKES.map(b => ({ ...b, score: scoreMatch(b) }));
+  scored.sort((a, b) => b.score - a.score);
+  const top3 = scored.slice(0, 3);
+
+  const grid = document.getElementById('resultGrid');
+  grid.innerHTML = '';
+
+  top3.forEach((bike, i) => {
+    const card = document.createElement('div');
+    card.className = 'result-card' + (i === 0 ? ' top-pick' : '');
+    card.innerHTML = `
+      ${i === 0 ? '<div class="top-badge">Best Match</div>' : ''}
+      <img class="result-img" src="${bike.img}" alt="${bike.name}"
+           onerror="this.style.background='#1a1a1a';this.style.height='180px'">
+      <div class="result-body">
+        <div class="result-cat">${bike.cat}</div>
+        <div class="result-name">${bike.name}</div>
+        <div class="result-desc">${bike.desc}</div>
+        <div class="result-price">Starting at $${bike.price.toLocaleString()}</div>
+        <a class="result-cta" href="https://www.trekbikes.com/us/en_US/" target="_blank">Shop Now →</a>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Personalize the headline
+  const riderType = answers['1'];
+  const terrain = answers['2'];
+  const headlines = {
+    adventurer: "You're Built for the Trail.",
+    commuter: "Your Daily Ride, Upgraded.",
+    fitness: "Performance Matched to You.",
+    casual: "Your Perfect Weekend Bike."
+  };
+  document.getElementById('resultTitle').textContent = headlines[riderType] || "Here's Your Trek.";
+
+  goToSlide(7);
+}
+
+function restart() {
+  Object.keys(answers).forEach(k => delete answers[k]);
+  budget = 1000;
+  document.getElementById('budgetSlider').value = 1000;
+  document.getElementById('budgetDisplay').textContent = '$1,000';
+  document.querySelectorAll('.opt, .opt-img-card').forEach(o => o.classList.remove('selected'));
+  document.querySelectorAll('.btn-next').forEach(b => b.disabled = true);
+  goToSlide(0);
+}
+
+// init
+updateProgress();
+</script>
+</body>
+</html>
